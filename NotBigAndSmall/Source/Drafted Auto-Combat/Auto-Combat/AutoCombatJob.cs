@@ -153,7 +153,19 @@ namespace BigAndSmall
                 return null;
             }
 
-            if (ability.AICanTargetNow(target))
+            bool aiCanUse = ability.def.aiCanUse;
+            // Hack to get the AI to use abilities that the player selected even though not marked as AI usable.
+            bool canUseNow = false;
+            try
+            {
+                ability.def.aiCanUse = true;
+                canUseNow = ability.AICanTargetNow(target);
+            }
+            finally
+            {
+                ability.def.aiCanUse = aiCanUse;
+            }
+            if (canUseNow)
             {
                 return ability;
             }
@@ -319,7 +331,7 @@ namespace BigAndSmall
                 return null;
             }
 
-            List<Ability> autoCastAbilities = [.. pawn.abilities.abilities.Where(x => actionData.autocastAbilities.Contains(x.def))];
+            List<Ability> autoCastAbilities = [.. pawn.abilities.AllAbilitiesForReading.Where(x => actionData.autocastAbilities.Contains(x.def))];
 
             if (TrySelfBuff(pawn, autoCastAbilities) is Job selfBuff)
             {

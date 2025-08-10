@@ -23,5 +23,5 @@
 	</loadAfter>
   <incompatibleWith>
 	</incompatibleWith>
-	<description>Adds drafted auto-combat feature for any draftable player-controlled pawn.\n\nIf used with Big and Small Framework it will simply force-enable the auto-combat from there instead.</description>
+	<description>Adds drafted auto-combat feature for any draftable player-controlled pawn.\n\nThis is intended as a standalone version of the optional Big and Small Framework feature, and if used with Big and Small Framework it will simply force-enable the auto-combat from there instead.</description>
 </ModMetaData>

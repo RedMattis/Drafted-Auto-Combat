@@ -20,6 +20,13 @@
 		<li>Ludeon.RimWorld.Ideology</li>
 		<li>Ludeon.RimWorld.Biotech</li>
 		<li>brrainz.harmony</li>
+		<li>RedMattis.BetterPrerequisites</li>
+    <li>erdelf.HumanoidAlienRaces</li>
+		<li>vanillaracesexpanded.android</li>
+		<li>nals.facialanimation</li>
+		<li>vanillaexpanded.vtexe.facialanims</li>
+		<li>Killathon.MechHumanlikes.AndroidTiersCore</li>
+		<li>biotexpans.core</li>
 	</loadAfter>
   <incompatibleWith>
 	</incompatibleWith>

@@ -4,7 +4,7 @@
 	<supportedVersions>
 		<li>1.6</li>
 	</supportedVersions>
-	<modIconPath IgnoreIfNoMatchingField="True">BS_ModIcon</modIconPath>
+	<modIconPath IgnoreIfNoMatchingField="True">BG_ModIcon</modIconPath>
   <packageId>RedMattis.AutoCombat</packageId>
 	<modDependencies>
 		<li>

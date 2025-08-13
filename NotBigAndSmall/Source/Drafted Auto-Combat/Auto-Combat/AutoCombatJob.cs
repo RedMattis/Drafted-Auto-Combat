@@ -8,6 +8,7 @@ using Verse.AI;
 using Verse;
 using Verse.AI.Group;
 using System.Security.Cryptography;
+using UnityEngine.Networking;
 
 namespace BigAndSmall
 {
@@ -30,19 +31,31 @@ namespace BigAndSmall
 
         protected override bool TryFindShootingPosition(Pawn pawn, out IntVec3 dest, Verb verbToUse = null)
         {
+            return TryFindShootinPositionInner(pawn, out dest, verbToUse);
+        }
+
+        protected bool TryFindShootinPositionInner(Pawn pawn, out IntVec3 dest, Verb verbToUse, bool requestNewPos = false)
+        {
             dest = pawn.Position;
             if (Hunt)
             {
                 Thing enemyTarget = pawn.mindState.enemyTarget;
-                if (CanTargetWithAbillities(pawn, enemyTarget, out Ability ability))
+                CastPositionRequest newReq = default;
+                newReq.caster = pawn;
+                newReq.target = enemyTarget;
+                newReq.wantCoverFromTarget = actionData.takeCover;
+                newReq.preferredCastPosition = requestNewPos ? null : pawn.Position;
+                if (verbToUse == null && CanTargetWithAbillities(pawn, enemyTarget, out Ability ability))
                 {
-                    CastPositionRequest newReq = default;
-                    newReq.caster = pawn;
-                    newReq.target = enemyTarget;
+
                     newReq.verb = ability.verb;
-                    newReq.maxRangeFromTarget = ability.verb.verbProps.range;
-                    newReq.wantCoverFromTarget = actionData.takeCover;
-                    newReq.preferredCastPosition = pawn.Position;
+                    newReq.maxRangeFromTarget = ability.verb.verbProps.range - 0.5f;
+                    return CastPositionFinder.TryFindCastPosition(newReq, out dest);
+                }
+                else
+                {
+                    newReq.verb = verbToUse;
+                    newReq.maxRangeFromTarget = verbToUse.verbProps.range - 0.5f;
                     return CastPositionFinder.TryFindCastPosition(newReq, out dest);
                 }
             }
@@ -71,7 +84,7 @@ namespace BigAndSmall
             actionData = DraftedActionHolder.GetData(pawn);
             if (!Hunt)
             {
-                if (actionData.autocastAbilities.Empty() || pawn.abilities?.abilities == null || pawn.abilities.abilities.NullOrEmpty())
+                if (actionData.autocastAbilities.Empty() || pawn.abilities?.abilities.NullOrEmpty() == false)
                 {
                     // If we're not in hunt mode, and there are literally no valid abilities, just let it continue to the regular indefinite wait job.
                     return null;
@@ -212,30 +225,43 @@ namespace BigAndSmall
                 return meleeJob;
             }
             bool takeCover = actionData.takeCover;
-            float coverAmount = takeCover ? 0.00f : 0.19f;
+            float coverAmount = takeCover ? 0.24f : 0.01f;
+            float coverAmountFound = CoverUtility.CalculateOverallBlockChance(pawn, enemyTarget.Position, pawn.Map);
             bool coverOkay = CoverUtility.CalculateOverallBlockChance(pawn, enemyTarget.Position, pawn.Map) >= coverAmount;
             bool standable = pawn.Position.Standable(pawn.Map) && pawn.Map.pawnDestinationReservationManager.CanReserve(pawn.Position, pawn, pawn.Drafted);
             bool canHitTarget = verb.CanHitTarget(enemyTarget);
             float verbRange = verb.verbProps.range;
             bool closeEnough = (pawn.Position - enemyTarget.Position).LengthHorizontalSquared < verbRange * verbRange;
             //bool closeEnough = (pawn.Position - enemyTarget.Position).LengthHorizontalSquared < 25;
+
             if (coverOkay && standable && canHitTarget && closeEnough)
             {
-                return JobMaker.MakeJob(JobDefOf.Wait_Combat, ExpiryInterval_ShooterSucceeded.RandomInRange, checkOverrideOnExpiry: true);
+                return JobMaker.MakeJob(JobDefOf.Wait_Combat, ExpiryInterval_ShooterSucceeded.RandomInRange / 3, checkOverrideOnExpiry: true);
             }
 
-            if (!TryFindShootingPosition(pawn, out var shootingPos))
+            if (!TryFindShootingPosition(pawn, out var shootingPos, verbToUse: verb))
             {
                 return JobMaker.MakeJob(JobDefOf.Wait_Combat, 100, checkOverrideOnExpiry: true);
             }
 
             if (shootingPos == pawn.Position)
             {
-                return JobMaker.MakeJob(JobDefOf.Wait_Combat, ExpiryInterval_ShooterSucceeded.RandomInRange, checkOverrideOnExpiry: true);
+                if (takeCover && !coverOkay)
+                {
+                    if (TryFindShootinPositionInner(pawn, out var newShootingPos, verbToUse: verb, requestNewPos: true) && newShootingPos != pawn.Position)
+                    {
+                        return MakeGotoJob(newShootingPos);
+                    }
+                }
+                return JobMaker.MakeJob(JobDefOf.Wait_Combat, ExpiryInterval_ShooterSucceeded.RandomInRange / 3, checkOverrideOnExpiry: true);
             }
+            return MakeGotoJob(shootingPos);
+        }
 
+        protected static Job MakeGotoJob(IntVec3 shootingPos)
+        {
             Job goToShootingPos = JobMaker.MakeJob(JobDefOf.Goto, shootingPos);
-            goToShootingPos.expiryInterval = ExpiryInterval_ShooterSucceeded.RandomInRange;
+            goToShootingPos.expiryInterval = ExpiryInterval_ShooterSucceeded.RandomInRange / 3;
             goToShootingPos.checkOverrideOnExpire = true;
             return goToShootingPos;
         }

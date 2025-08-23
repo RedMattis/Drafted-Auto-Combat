@@ -160,7 +160,7 @@ namespace BigAndSmall
         private Pawn pawn = null;
         public string pawnID;
         public bool hunt = false;
-        public bool takeCover = true;
+        public bool takeCover = false;
         public List<AbilityDef> autocastAbilities = new();
 
         public Pawn Pawn  // Always use this to get the pawn, not the field since it might be null.
@@ -250,6 +250,7 @@ namespace BigAndSmall
         {
             Scribe_Values.Look(ref pawnID, "pawnID");
             Scribe_Values.Look(ref hunt, "huntMode", false);
+            Scribe_Values.Look(ref takeCover, "takeCoverMode", false);
             Scribe_Collections.Look(ref autocastAbilities, "autocastAbilities", LookMode.Def);
         }
     }

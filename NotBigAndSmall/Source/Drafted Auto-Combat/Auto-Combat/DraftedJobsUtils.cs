@@ -36,8 +36,7 @@ namespace BigAndSmall
         public static readonly Texture2D AutoCastTex = ContentFinder<Texture2D>.Get("BS_UI/Auto_Tiny");
         public static readonly Texture2D HuntIcon = ContentFinder<Texture2D>.Get("BS_UI/Hunt");
         public static readonly Texture2D TakeCoverIcon = ContentFinder<Texture2D>.Get("BS_UI/TakeCover");
-        private static bool? autoCombatEnabled = null;
-        public static bool AutoCombatEnabled { get { return autoCombatEnabled ??= ModsConfig.IsActive("RedMattis.AutoCombat"); } }
+        public static readonly Texture2D MeleeCharge = ContentFinder<Texture2D>.Get("BS_UI/MeleeCharge");
 
         public static bool IsDraftedPlayerPawn(Pawn pawn)
         {
@@ -70,40 +69,78 @@ namespace BigAndSmall
             if (IsDraftedPlayerPawn(pawn))
             {
                 // Add Hunt Toggle Gizmo
-                var huntCommand = new Command_ToggleWithRClick
+                Command_ToggleWithRClick huntCommand = AddHuntGizmo(pawn);
+                if (DraftedActionHolder.GetData(pawn).hunt)
                 {
-                    defaultLabel = "BS_DraftHuntLabel".Translate(),
-                    defaultDesc = "BS_HuntDescription".Translate(),
-                    icon = HuntIcon,
-                    isActive = () => DraftedActionHolder.GetData(pawn).hunt,
-                    toggleAction = () => DraftedActionHolder.GetData(pawn).ToggleHuntMode(),
-                    rightClickAction = () =>
-                    {
-                        DraftedActionData data = DraftedActionHolder.GetData(pawn);
-                        data.ToggleAutoForAll();
-                    },
-                    activateSound = SoundDefOf.Click,
-                    groupKey = 6173613,
-                    hotKey = KeyBindingDefOf.Misc3
-                };
-                var takeCover = new Command_ToggleWithRClick
+                    Command_ToggleWithRClick takeCover = AddCoerGizmo(pawn);
+                    Command_ToggleWithRClick meleeCharge = AddChargeGizmo(pawn);
+                    return UpdateEnumerable(__result, [huntCommand, takeCover, meleeCharge]);
+                }
+                else
                 {
-                    defaultLabel = "BS_TakeCoverLabel".Translate(),
-                    defaultDesc = "BS_TakeCoverDescription".Translate(),
-                    icon = TakeCoverIcon,
-                    isActive = () => DraftedActionHolder.GetData(pawn).takeCover,
-                    toggleAction = () => DraftedActionHolder.GetData(pawn).ToggleCoverMode(),
-                    rightClickAction = () =>
-                    {
-                    },
-                    activateSound = SoundDefOf.Click,
-                    groupKey = 6173614,
-                    hotKey = KeyBindingDefOf.Misc4
-                };
+                    return UpdateEnumerable(__result, [huntCommand]);
+                }
 
-                return UpdateEnumerable(__result, [huntCommand, takeCover]);
+
+
             }
             return __result;
+        }
+
+        private static Command_ToggleWithRClick AddChargeGizmo(Pawn pawn)
+        {
+            return new Command_ToggleWithRClick
+            {
+                defaultLabel = "BS_MeleeChargeLabel".Translate(),
+                defaultDesc = "BS_MeleeChargeDescription".Translate(),
+                icon = MeleeCharge,
+                isActive = () => DraftedActionHolder.GetData(pawn).meleeCharge,
+                toggleAction = () => DraftedActionHolder.GetData(pawn).ToggleMeleeCharge(),
+                rightClickAction = () =>
+                {
+                },
+                activateSound = SoundDefOf.Click,
+                groupKey = 6173615,
+                hotKey = KeyBindingDefOf.Misc5
+            };
+        }
+
+        private static Command_ToggleWithRClick AddCoerGizmo(Pawn pawn)
+        {
+            return new Command_ToggleWithRClick
+            {
+                defaultLabel = "BS_TakeCoverLabel".Translate(),
+                defaultDesc = "BS_TakeCoverDescription".Translate(),
+                icon = TakeCoverIcon,
+                isActive = () => DraftedActionHolder.GetData(pawn).takeCover,
+                toggleAction = () => DraftedActionHolder.GetData(pawn).ToggleCoverMode(),
+                rightClickAction = () =>
+                {
+                },
+                activateSound = SoundDefOf.Click,
+                groupKey = 6173614,
+                hotKey = KeyBindingDefOf.Misc4
+            };
+        }
+
+        private static Command_ToggleWithRClick AddHuntGizmo(Pawn pawn)
+        {
+            return new Command_ToggleWithRClick
+            {
+                defaultLabel = "BS_DraftHuntLabel".Translate(),
+                defaultDesc = "BS_HuntDescription".Translate(),
+                icon = HuntIcon,
+                isActive = () => DraftedActionHolder.GetData(pawn).hunt,
+                toggleAction = () => DraftedActionHolder.GetData(pawn).ToggleHuntMode(),
+                rightClickAction = () =>
+                {
+                    DraftedActionData data = DraftedActionHolder.GetData(pawn);
+                    data.ToggleAutoForAll();
+                },
+                activateSound = SoundDefOf.Click,
+                groupKey = 6173613,
+                hotKey = KeyBindingDefOf.Misc3
+            };
         }
 
         [HarmonyPatch(typeof(Command), "GizmoOnGUIInt")]
@@ -130,11 +167,27 @@ namespace BigAndSmall
                 }
             }
         }
+
+        [HarmonyPatch(typeof(PriorityWork), nameof(PriorityWork.ClearPrioritizedWorkAndJobQueue))]
+        [HarmonyPostfix]
+        public static void ClearPrioritizedWorkAndJobQueuePostfix(PriorityWork __instance)
+        {
+            
+            if (!__instance.pawn.Drafted)
+            {
+                var pawn = __instance.pawn;
+                if (DraftedActionHolder.GetData(pawn) is DraftedActionData data)
+                {
+                    data.hunt = false;
+                }
+            }
+            
+        }
     }
 
     public class DraftedActionHolder : GameComponent
     {
-        public static Dictionary<string, DraftedActionData> pawnDraftActionData = new();
+        public static Dictionary<string, DraftedActionData> pawnDraftActionData = [];
 
         public static DraftedActionData GetData(Pawn pawn)
         {
@@ -161,6 +214,7 @@ namespace BigAndSmall
         public string pawnID;
         public bool hunt = false;
         public bool takeCover = false;
+        public bool meleeCharge = true;
         public List<AbilityDef> autocastAbilities = new();
 
         public Pawn Pawn  // Always use this to get the pawn, not the field since it might be null.
@@ -204,6 +258,12 @@ namespace BigAndSmall
             takeCover = !takeCover;
             Pawn.jobs.EndCurrentJob(JobCondition.InterruptForced);
             return takeCover;
+        }
+        public bool ToggleMeleeCharge()
+        {
+            meleeCharge = !meleeCharge;
+            RefreshDraft();
+            return meleeCharge;
         }
         public bool ToggleHuntMode()
         {
@@ -251,6 +311,7 @@ namespace BigAndSmall
             Scribe_Values.Look(ref pawnID, "pawnID");
             Scribe_Values.Look(ref hunt, "huntMode", false);
             Scribe_Values.Look(ref takeCover, "takeCoverMode", false);
+            Scribe_Values.Look(ref meleeCharge, "meleeChargeMode", true);
             Scribe_Collections.Look(ref autocastAbilities, "autocastAbilities", LookMode.Def);
         }
     }

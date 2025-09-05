@@ -25,6 +25,10 @@
     <Reference Include="$(RimWorldPath)/*.dll">
       <Private>False</Private>
     </Reference>
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <Publicize Include="Assembly-CSharp:RimWorld.Pawn_GeneTracker.xenotype" />
     <Publicize Include="Assembly-CSharp:RimWorld.Pawn_GeneTracker.Notify_GenesChanged" />
     <Publicize Include="Assembly-CSharp:RimWorld.Pawn_GeneTracker.CheckForOverrides" />
@@ -53,6 +57,7 @@
     <Publicize Include="Assembly-CSharp:Verse.RaceProperties.nameGeneratorFemale" />
     <Publicize Include="Assembly-CSharp:Verse.PawnRenderNode.props" />
     <Publicize Include="Assembly-CSharp:Verse.RaceProperties.fleshType" />
+    <Publicize Include="Assembly-CSharp:Verse.PriorityWork.pawn" />
 
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\..\..\..\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll</HintPath>
